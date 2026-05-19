@@ -1,0 +1,26 @@
+[theme]
+base = "light"
+primaryColor = "#F37021"
+backgroundColor = "#F1F2EE"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#2B2B2B"
+linkColor = "#F37021"
+borderColor = "#9CC63B"
+font = "sans-serif"
+headingFont = "sans-serif"
+codeFont = "monospace"
+chartCategoricalColors = [
+  "#F37021",
+  "#9CC63B",
+  "#2B2B2B",
+  "#F7A45A",
+  "#6E9F2E",
+  "#8C8C86"
+]
+chartSequentialColors = [
+  "#FFF3EA",
+  "#FFD4B8",
+  "#F7A45A",
+  "#F37021",
+  "#B94B12"
+]
