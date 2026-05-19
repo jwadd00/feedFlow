@@ -87,13 +87,13 @@ DATABASE_URL=sqlite:///data/feedflow.db
 PostgreSQL example:
 
 ```env
-DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/feedflow
+DATABASE_URL=postgresql+psycopg2://<db-user>:<db-secret>@localhost:5432/feedflow
 ```
 
 Azure SQL / SQL Server example:
 
 ```env
-DATABASE_URL=mssql+pyodbc://user:password@server.database.windows.net/database?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
+DATABASE_URL=mssql+pyodbc://<db-user>:<db-secret>@<server>.database.windows.net/<database>?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no
 SEED_SAMPLE_DATA=false
 CREATE_TABLES_ON_STARTUP=false
 RUN_STARTUP_JOBS=false
@@ -146,7 +146,7 @@ In Streamlit Cloud, add secrets using the keys from `.streamlit/secrets.example.
 
 ```toml
 APP_AUTH_ENABLED = true
-APP_PASSWORD = "use-a-private-password"
+APP_PASSWORD = "<private-app-password>"
 DATABASE_URL = "your-azure-sql-connection-string"
 SEED_SAMPLE_DATA = false
 CREATE_TABLES_ON_STARTUP = false
