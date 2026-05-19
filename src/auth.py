@@ -3,8 +3,12 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+from pathlib import Path
 
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def require_login() -> None:
@@ -61,4 +65,27 @@ def _get_setting(name: str, default: str | None = None) -> str | bool | int | fl
     except Exception:
         pass
 
+    value = _get_local_secret(name)
+    if value is not None:
+        return value
+
     return default
+
+
+def _get_local_secret(name: str) -> str | None:
+    secrets_path = Path(__file__).resolve().parents[1] / ".streamlit" / "secrets.toml"
+    if not secrets_path.exists():
+        return None
+
+    prefix = f"{name} "
+    for line in secrets_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped.startswith(prefix) or "=" not in stripped:
+            continue
+        _key, raw_value = stripped.split("=", 1)
+        value = raw_value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            return value[1:-1]
+        return value
+
+    return None
