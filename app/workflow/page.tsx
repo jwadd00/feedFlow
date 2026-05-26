@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, ClipboardCheck, DatabaseZap, PackageCheck, Settings, Sparkles, Truck } from "lucide-react";
-import { PageHeader, Stat } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
 import { ensureDatabaseReady } from "@/lib/bootstrap";
-import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -67,12 +66,6 @@ const workflow = [
 
 export default async function WorkflowPage() {
   await ensureDatabaseReady();
-  const [activeBins, openForecasts, activeLoads, openIssues] = await Promise.all([
-    prisma.feedBin.count({ where: { active: true } }),
-    prisma.loadForecast.count({ where: { status: "Open" } }),
-    prisma.load.count({ where: { status: { in: ["Planned", "Scheduled", "Released to Mill", "Loaded", "In Transit"] } } }),
-    prisma.dataQualityIssue.count({ where: { issueStatus: "Open" } })
-  ]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
@@ -82,13 +75,6 @@ export default async function WorkflowPage() {
         description="A practical end-to-end path through FeedFlow, from master data setup to reconciled delivery tickets and exception cleanup."
         actions={<Link className="button" href="/operations"><DatabaseZap size={16} />Open hub</Link>}
       />
-
-      <section className="grid gap-4 md:grid-cols-4">
-        <Stat label="Active Bins" value={activeBins} />
-        <Stat label="Open Forecasts" value={openForecasts} tone="#d99a28" />
-        <Stat label="Active Loads" value={activeLoads} />
-        <Stat label="Open Issues" value={openIssues} tone="#b42318" />
-      </section>
 
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         {workflow.map((item) => {

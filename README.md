@@ -31,6 +31,8 @@ The runtime start script applies the Prisma schema to Postgres before starting N
 
 The app requires Basic Auth in production. The included `render.yaml` generates `APP_BASIC_AUTH_PASSWORD` and `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` automatically. Keep both values stable across deploys.
 
+For short-lived external testing, set `APP_TEST_AUTH_ENABLED=true` and provide `APP_TEST_AUTH_USERNAME` plus `APP_TEST_AUTH_PASSWORD`. Disable `APP_TEST_AUTH_ENABLED` or rotate the temporary password after testing.
+
 A runnable Streamlit MVP for a poultry feed / animal food manufacturing facility focused on:
 
 - Farm bin inventory surveillance
