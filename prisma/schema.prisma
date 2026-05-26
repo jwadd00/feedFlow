@@ -35,9 +35,29 @@ model FarmHouse {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   farm         Farm      @relation(fields: [farmId], references: [id])
   bins         FeedBin[]
+  flocks       Flock[]
 
   @@unique([farmId, houseCode], name: "uq_farm_house")
   @@map("farm_houses")
+}
+
+model Flock {
+  id                Int       @id @default(autoincrement())
+  farmHouseId       Int       @map("farm_house_id")
+  flockCode         String    @map("flock_code")
+  placementDate     DateTime  @map("placement_date")
+  birdCount         Int       @map("bird_count")
+  breed             String?
+  targetMarketDays  Int?      @map("target_market_days")
+  baseDailyTons     Float?    @map("base_daily_tons")
+  active            Boolean   @default(true)
+  notes             String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  house             FarmHouse @relation(fields: [farmHouseId], references: [id])
+
+  @@unique([farmHouseId, flockCode], name: "uq_house_flock")
+  @@map("flocks")
 }
 
 model FeedType {

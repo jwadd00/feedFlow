@@ -13,7 +13,7 @@ const workflow = [
     icon: Settings,
     href: "/admin",
     action: "Admin",
-    detail: "Maintain farms, houses, feed types, and bins. Capacity, daily consumption, minimum safe tons, and active status drive estimates, forecast timing, and data quality checks."
+    detail: "Maintain farms, houses, active flocks, feed types, and bins. Flock placement date and bird count shape age-based consumption; capacity, minimum safe tons, and active status drive estimates, forecast timing, and data quality checks."
   },
   {
     step: "2",
@@ -21,7 +21,7 @@ const workflow = [
     icon: PackageCheck,
     href: "/bins",
     action: "Bin Surveillance",
-    detail: "Add grower, driver, sensor, manual, or estimate readings. Each reading refreshes the current tons, percent full, days remaining, projected empty date, risk level, and confidence score."
+    detail: "Add grower, driver, sensor, manual, or estimate readings. Each reading refreshes current tons against the active flock's age-adjusted decline rate, percent full, days remaining, projected empty date, risk level, and confidence score."
   },
   {
     step: "3",
@@ -115,7 +115,7 @@ export default async function WorkflowPage() {
         <div className="panel p-5">
           <h2 className="text-lg font-bold">When Configuration Changes</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Updates to bin capacity, daily consumption, minimum safe tons, feed type, house assignment, or active status automatically recalculate inventory estimates, forecast recommendations, and managed data quality issues.
+            Updates to active flocks, placement dates, bird counts, bin capacity, daily consumption, minimum safe tons, feed type, house assignment, or active status automatically recalculate inventory estimates, forecast recommendations, and managed data quality issues.
           </p>
         </div>
         <div className="panel p-5">

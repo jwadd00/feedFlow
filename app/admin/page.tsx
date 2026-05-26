@@ -3,10 +3,12 @@ import {
   createFarmHouseAction,
   createFeedBinAction,
   createFeedTypeAction,
+  createFlockAction,
   updateFarmAction,
   updateFarmHouseAction,
   updateFeedBinAction,
-  updateFeedTypeAction
+  updateFeedTypeAction,
+  updateFlockAction
 } from "@/app/actions";
 import { DataTable, PageHeader, Pill, Stat, Tons } from "@/components/ui";
 import { ensureDatabaseReady } from "@/lib/bootstrap";
@@ -23,11 +25,20 @@ function NumericInput({ name, value, step = "1" }: { name: string; value?: numbe
   return <input name={name} type="number" step={step} defaultValue={value ?? ""} />;
 }
 
+function DateInput({ name, value }: { name: string; value?: Date | null }) {
+  return <input name={name} type="date" defaultValue={value ? value.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)} />;
+}
+
+function flockAgeDays(placementDate: Date) {
+  return Math.max(0, Math.floor((Date.now() - placementDate.getTime()) / (24 * 60 * 60 * 1000)));
+}
+
 export default async function AdminPage() {
   await ensureDatabaseReady();
-  const [farms, houses, feedTypes, bins, openIssues, openForecasts] = await Promise.all([
+  const [farms, houses, flocks, feedTypes, bins, openIssues, openForecasts] = await Promise.all([
     prisma.farm.findMany({ include: { houses: true }, orderBy: { farmCode: "asc" } }),
-    prisma.farmHouse.findMany({ include: { farm: true, bins: true }, orderBy: [{ farmId: "asc" }, { houseCode: "asc" }] }),
+    prisma.farmHouse.findMany({ include: { farm: true, bins: true, flocks: true }, orderBy: [{ farmId: "asc" }, { houseCode: "asc" }] }),
+    prisma.flock.findMany({ include: { house: { include: { farm: true } } }, orderBy: [{ active: "desc" }, { placementDate: "desc" }] }),
     prisma.feedType.findMany({ include: { bins: true }, orderBy: { feedCode: "asc" } }),
     prisma.feedBin.findMany({
       include: { feedType: true, estimate: true, house: { include: { farm: true } } },
@@ -42,10 +53,11 @@ export default async function AdminPage() {
       <PageHeader
         eyebrow="Configuration"
         title="Admin"
-        description="Add and edit farms, houses, feed types, and bins. Changes to bin capacity, daily consumption, safe minimum, and active status recalculate inventory, forecasts, and quality checks."
+        description="Add and edit farms, houses, flocks, feed types, and bins. Flock placement date, bird count, bin capacity, daily consumption, safe minimum, and active status recalculate inventory, forecasts, and quality checks."
       />
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-5">
         <Stat label="Farms" value={farms.length} />
+        <Stat label="Active Flocks" value={flocks.filter((flock) => flock.active).length} />
         <Stat label="Bins" value={bins.length} />
         <Stat label="Open Forecasts" value={openForecasts} tone="#d99a28" />
         <Stat label="Open Issues" value={openIssues} tone="#b42318" />
@@ -80,6 +92,24 @@ export default async function AdminPage() {
           </div>
           <label className="flex items-center gap-2 text-sm font-semibold"><ActiveCheckbox active /> Active</label>
           <button type="submit" disabled={!farms.length}>Add house</button>
+        </form>
+
+        <form action={createFlockAction} className="panel space-y-3 p-5">
+          <h2 className="text-lg font-bold">Add Flock</h2>
+          <label className="block text-sm font-semibold">House<select name="farmHouseId">{houses.map((house) => <option key={house.id} value={house.id}>{house.farm.farmCode} / {house.houseCode}</option>)}</select></label>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="block text-sm font-semibold">Flock code<input name="flockCode" required /></label>
+            <label className="block text-sm font-semibold">Placement date<DateInput name="placementDate" /></label>
+            <label className="block text-sm font-semibold">Bird count<NumericInput name="birdCount" value={24000} /></label>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="block text-sm font-semibold">Breed<input name="breed" placeholder="Broiler" /></label>
+            <label className="block text-sm font-semibold">Target market days<NumericInput name="targetMarketDays" value={42} /></label>
+            <label className="block text-sm font-semibold">Base daily tons<NumericInput name="baseDailyTons" step="0.1" /></label>
+          </div>
+          <label className="block text-sm font-semibold">Notes<textarea name="notes" rows={3} /></label>
+          <label className="flex items-center gap-2 text-sm font-semibold"><ActiveCheckbox active /> Active</label>
+          <button type="submit" disabled={!houses.length}>Add flock</button>
         </form>
 
         <form action={createFeedTypeAction} className="panel space-y-3 p-5">
@@ -152,12 +182,55 @@ export default async function AdminPage() {
                 <button type="submit">Save house</button>
               </form>
             ),
-            bins: house.bins.length
+            bins: house.bins.length,
+            flock: house.flocks.find((flock) => flock.active)?.flockCode ?? "-"
           }))}
           columns={[
             { key: "edit", label: "House Configuration" },
-            { key: "bins", label: "Bins", align: "right" }
+            { key: "bins", label: "Bins", align: "right" },
+            { key: "flock", label: "Active Flock" }
           ]}
+        />
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-bold">Flocks</h2>
+        <DataTable
+          rows={flocks.map((flock) => ({
+            edit: (
+              <form action={updateFlockAction} className="grid min-w-[960px] gap-2">
+                <input type="hidden" name="flockId" value={flock.id} />
+                <div className="grid gap-2 md:grid-cols-[1.1fr_0.7fr_0.8fr_0.7fr_0.8fr_0.8fr_auto]">
+                  <select name="farmHouseId" defaultValue={flock.farmHouseId}>{houses.map((house) => <option key={house.id} value={house.id}>{house.farm.farmCode} / {house.houseCode}</option>)}</select>
+                  <input name="flockCode" defaultValue={flock.flockCode} required />
+                  <DateInput name="placementDate" value={flock.placementDate} />
+                  <NumericInput name="birdCount" value={flock.birdCount} />
+                  <input name="breed" defaultValue={flock.breed ?? ""} />
+                  <NumericInput name="targetMarketDays" value={flock.targetMarketDays} />
+                  <label className="flex items-center gap-2 text-sm"><ActiveCheckbox active={flock.active} /> Active</label>
+                </div>
+                <div className="grid gap-2 md:grid-cols-[0.7fr_1.5fr]">
+                  <NumericInput name="baseDailyTons" value={flock.baseDailyTons} step="0.1" />
+                  <input name="notes" defaultValue={flock.notes ?? ""} placeholder="Notes" />
+                </div>
+                <button type="submit">Save flock and recalculate</button>
+              </form>
+            ),
+            house: `${flock.house.farm.farmCode} / ${flock.house.houseCode}`,
+            age: `${flockAgeDays(flock.placementDate)} days`,
+            birds: flock.birdCount.toLocaleString(),
+            base: flock.baseDailyTons ? `${fmtNumber(flock.baseDailyTons)} tons` : "Bin fallback",
+            active: <Pill value={flock.active ? "Active" : "Inactive"} />
+          }))}
+          columns={[
+            { key: "edit", label: "Flock Configuration" },
+            { key: "house", label: "House" },
+            { key: "age", label: "Age" },
+            { key: "birds", label: "Birds", align: "right" },
+            { key: "base", label: "Base Daily" },
+            { key: "active", label: "Status" }
+          ]}
+          empty="No flock configurations available."
         />
       </section>
 

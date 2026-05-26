@@ -10,7 +10,7 @@ export default async function BinSurveillance() {
   await ensureDatabaseReady();
   const bins = await prisma.feedBin.findMany({
     where: { active: true },
-    include: { feedType: true, estimate: { include: { lastReading: true } }, house: { include: { farm: true } } },
+    include: { feedType: true, estimate: { include: { lastReading: true } }, house: { include: { farm: true, flocks: { where: { active: true }, orderBy: { placementDate: "desc" }, take: 1 } } } },
     orderBy: { id: "asc" }
   });
   const nowLocal = new Date().toISOString().slice(0, 16);
@@ -51,9 +51,11 @@ export default async function BinSurveillance() {
               house: bin.house.houseCode,
               bin: bin.binCode,
               feed: bin.feedType.feedName,
+              flock: bin.house.flocks[0]?.flockCode ?? "-",
               capacity: <Tons value={bin.capacityTons} />,
               current: <Tons value={bin.estimate?.currentEstimatedTons} />,
               full: `${fmtNumber(bin.estimate?.percentFull, 0)}%`,
+              daily: <Tons value={bin.estimate?.dailyConsumptionTons} />,
               days: fmtNumber(bin.estimate?.daysRemaining),
               risk: <Pill value={bin.estimate?.riskLevel || "Unknown"} />,
               confidence: `${fmtNumber(bin.estimate?.confidenceScore, 0)}%`,
@@ -65,9 +67,11 @@ export default async function BinSurveillance() {
               { key: "house", label: "House" },
               { key: "bin", label: "Bin" },
               { key: "feed", label: "Feed" },
+              { key: "flock", label: "Flock" },
               { key: "capacity", label: "Capacity", align: "right" },
               { key: "current", label: "Current", align: "right" },
               { key: "full", label: "Full", align: "right" },
+              { key: "daily", label: "Daily", align: "right" },
               { key: "days", label: "Days", align: "right" },
               { key: "risk", label: "Risk" },
               { key: "confidence", label: "Confidence", align: "right" },

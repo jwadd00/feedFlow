@@ -43,6 +43,20 @@ async function seedSampleData() {
     houses.push(await prisma.farmHouse.create({ data: { farmId: farm.id, houseCode: "H1", birdCount: 24500, flockAgeDays: 18 } }));
     houses.push(await prisma.farmHouse.create({ data: { farmId: farm.id, houseCode: "H2", birdCount: 23800, flockAgeDays: 24 } }));
   }
+  for (let i = 0; i < houses.length; i++) {
+    await prisma.flock.create({
+      data: {
+        farmHouseId: houses[i].id,
+        flockCode: `FL-${1000 + i}`,
+        placementDate: new Date(now.getTime() - (18 + (i % 4) * 4) * 24 * 60 * 60 * 1000),
+        birdCount: houses[i].birdCount ?? 24000,
+        breed: "Broiler",
+        targetMarketDays: 42,
+        active: true,
+        notes: "Seed active flock"
+      }
+    });
+  }
   const bins = [];
   for (let i = 0; i < houses.length; i++) {
     const feedType = feedTypes[i % feedTypes.length];

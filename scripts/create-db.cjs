@@ -43,6 +43,21 @@ CREATE TABLE IF NOT EXISTS feed_types (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS flocks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  farm_house_id INTEGER NOT NULL REFERENCES farm_houses(id),
+  flock_code TEXT NOT NULL,
+  placement_date DATETIME NOT NULL,
+  bird_count INTEGER NOT NULL,
+  breed TEXT,
+  target_market_days INTEGER,
+  base_daily_tons REAL,
+  active BOOLEAN NOT NULL DEFAULT 1,
+  notes TEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uq_house_flock UNIQUE (farm_house_id, flock_code)
+);
 CREATE TABLE IF NOT EXISTS feed_bins (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   farm_house_id INTEGER NOT NULL REFERENCES farm_houses(id),
@@ -161,6 +176,7 @@ CREATE INDEX IF NOT EXISTS idx_estimates_risk ON bin_inventory_estimates(risk_le
 CREATE INDEX IF NOT EXISTS idx_forecasts_status ON load_forecasts(status);
 CREATE INDEX IF NOT EXISTS idx_loads_status ON loads(status);
 CREATE INDEX IF NOT EXISTS idx_issues_status ON data_quality_issues(issue_status);
+CREATE INDEX IF NOT EXISTS idx_flocks_house_active ON flocks(farm_house_id, active);
 `;
 
 db.exec(sql, (err) => {

@@ -8,6 +8,7 @@ import {
   createFarmHouse,
   createFeedBin,
   createFeedType,
+  createFlock,
   createLoadFromForecast,
   createManualLoad,
   deferForecast,
@@ -19,6 +20,7 @@ import {
   updateFarmHouse,
   updateFeedBin,
   updateFeedType,
+  updateFlock,
   updateLoadAssignment,
   updateLoadStatus
 } from "@/lib/ops";
@@ -99,6 +101,16 @@ export async function createFarmHouseAction(formData: FormData) {
 
 export async function updateFarmHouseAction(formData: FormData) {
   await updateFarmHouse(formData);
+  refreshAll();
+}
+
+export async function createFlockAction(formData: FormData) {
+  await createFlock(formData);
+  refreshAll();
+}
+
+export async function updateFlockAction(formData: FormData) {
+  await updateFlock(formData);
   refreshAll();
 }
 

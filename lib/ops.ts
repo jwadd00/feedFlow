@@ -13,11 +13,57 @@ const MANAGED_QUALITY_RULES = [
   "RUNOUT_RISK",
   "DELIVERED_MISSING_TICKET",
   "TONS_MISMATCH",
-  "UNRECONCILED_TICKET"
+  "UNRECONCILED_TICKET",
+  "MISSING_ACTIVE_FLOCK",
+  "FLOCK_PLACEMENT_IN_FUTURE"
 ];
 
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function wholeDaysBetween(start: Date, end: Date) {
+  return Math.floor((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+export function flockAgeDays(placementDate: Date, now = new Date()) {
+  return Math.max(0, wholeDaysBetween(placementDate, now));
+}
+
+function ageConsumptionMultiplier(ageDays: number) {
+  if (ageDays <= 7) return 0.35;
+  if (ageDays <= 14) return 0.55;
+  if (ageDays <= 21) return 0.8;
+  if (ageDays <= 28) return 1;
+  if (ageDays <= 35) return 1.15;
+  if (ageDays <= 42) return 1.3;
+  if (ageDays <= 56) return 1.15;
+  return 0.9;
+}
+
+type BinWithFlockConfig = {
+  estimatedDailyConsumptionTons: number;
+  house?: {
+    birdCount: number | null;
+    flocks?: Array<{
+      placementDate: Date;
+      birdCount: number;
+      baseDailyTons: number | null;
+      active: boolean;
+    }>;
+  };
+};
+
+function effectiveDailyConsumptionTons(bin: BinWithFlockConfig, now = new Date()) {
+  const flock = bin.house?.flocks?.find((item) => item.active);
+  if (!flock) return bin.estimatedDailyConsumptionTons;
+  if (flock.placementDate > now) return 0;
+
+  const baseDailyTons = flock.baseDailyTons ?? bin.estimatedDailyConsumptionTons;
+  const houseBirdCount = bin.house?.birdCount;
+  const birdCountFactor = houseBirdCount && houseBirdCount > 0 ? flock.birdCount / houseBirdCount : 1;
+  const ageFactor = ageConsumptionMultiplier(flockAgeDays(flock.placementDate, now));
+  return Math.max(0, Math.round(baseDailyTons * birdCountFactor * ageFactor * 100) / 100);
 }
 
 function confidenceScore(source: string | null | undefined, hoursSinceReading: number | null, suspicious = false) {
@@ -34,8 +80,12 @@ function confidenceScore(source: string | null | undefined, hoursSinceReading: n
 
 export async function refreshInventoryEstimates() {
   const now = new Date();
-  const bins = await prisma.feedBin.findMany({ where: { active: true } });
+  const bins = await prisma.feedBin.findMany({
+    where: { active: true },
+    include: { house: { include: { flocks: { where: { active: true }, orderBy: { placementDate: "desc" }, take: 1 } } } }
+  });
   for (const bin of bins) {
+    const dailyConsumptionTons = effectiveDailyConsumptionTons(bin, now);
     const latest = await prisma.binReading.findFirst({
       where: { feedBinId: bin.id },
       orderBy: [{ readingDatetime: "desc" }, { id: "desc" }]
@@ -47,7 +97,7 @@ export async function refreshInventoryEstimates() {
         estimatedAt: now,
         currentEstimatedTons: 0,
         percentFull: 0,
-        dailyConsumptionTons: bin.estimatedDailyConsumptionTons,
+        dailyConsumptionTons,
         projectedEmptyDatetime: null,
         daysRemaining: null,
         riskLevel: "Unknown",
@@ -55,15 +105,15 @@ export async function refreshInventoryEstimates() {
       };
     } else {
       const hoursElapsed = Math.max(0, (now.getTime() - latest.readingDatetime.getTime()) / 36e5);
-      const currentTons = Math.max(0, latest.readingTons - bin.estimatedDailyConsumptionTons * (hoursElapsed / 24));
-      const daysRemaining = bin.estimatedDailyConsumptionTons > 0 ? currentTons / bin.estimatedDailyConsumptionTons : null;
+      const currentTons = Math.max(0, latest.readingTons - dailyConsumptionTons * (hoursElapsed / 24));
+      const daysRemaining = dailyConsumptionTons > 0 ? currentTons / dailyConsumptionTons : null;
       const suspicious = latest.readingTons > bin.capacityTons || latest.readingTons < 0;
       values = {
         lastReadingId: latest.id,
         estimatedAt: now,
         currentEstimatedTons: Math.round(currentTons * 100) / 100,
         percentFull: bin.capacityTons ? Math.round(Math.min(200, (currentTons / bin.capacityTons) * 100) * 10) / 10 : 0,
-        dailyConsumptionTons: Math.round(bin.estimatedDailyConsumptionTons * 100) / 100,
+        dailyConsumptionTons,
         projectedEmptyDatetime: daysRemaining === null ? null : addDays(now, daysRemaining),
         daysRemaining: daysRemaining === null ? null : Math.round(daysRemaining * 100) / 100,
         riskLevel: classifyRisk(daysRemaining, currentTons, bin.minimumSafeTons),
@@ -304,6 +354,32 @@ export async function runDataQualityChecks() {
     if (latest.readingTons > bin.capacityTons) await upsertOpenIssue("READING_OVER_CAPACITY", "BinReading", latest.id, "High", `Reading of ${latest.readingTons.toFixed(1)} tons exceeds capacity of ${bin.capacityTons.toFixed(1)} tons.`);
     if (latest.readingTons < 0) await upsertOpenIssue("NEGATIVE_READING", "BinReading", latest.id, "Critical", `Reading of ${latest.readingTons.toFixed(1)} tons is negative.`);
   }
+  const houses = await prisma.farmHouse.findMany({
+    where: { active: true, bins: { some: { active: true } } },
+    include: { farm: true, flocks: { where: { active: true }, orderBy: { placementDate: "desc" } } }
+  });
+  for (const house of houses) {
+    if (!house.flocks.length) {
+      await upsertOpenIssue(
+        "MISSING_ACTIVE_FLOCK",
+        "FarmHouse",
+        house.id,
+        "Medium",
+        `${house.farm.farmCode} / ${house.houseCode} has active bins but no active flock configuration. Forecasts are using bin fallback consumption.`
+      );
+      continue;
+    }
+    const futureFlock = house.flocks.find((flock) => flock.placementDate > now);
+    if (futureFlock) {
+      await upsertOpenIssue(
+        "FLOCK_PLACEMENT_IN_FUTURE",
+        "Flock",
+        futureFlock.id,
+        "High",
+        `Flock ${futureFlock.flockCode} placement date is in the future; daily consumption will remain zero until placement.`
+      );
+    }
+  }
   const estimates = await prisma.binInventoryEstimate.findMany();
   for (const estimate of estimates) {
     if (estimate.daysRemaining !== null && estimate.daysRemaining <= 1) {
@@ -395,6 +471,10 @@ export async function createFarmHouse(formData: FormData) {
   await recalculateAfterConfigurationChange();
 }
 
+function dateFromInput(value: FormDataEntryValue | null) {
+  return new Date(String(value || new Date().toISOString().slice(0, 10)));
+}
+
 export async function updateFarmHouse(formData: FormData) {
   await prisma.farmHouse.update({
     where: { id: Number(formData.get("farmHouseId")) },
@@ -404,6 +484,41 @@ export async function updateFarmHouse(formData: FormData) {
       birdCount: Number(formData.get("birdCount")) || null,
       flockAgeDays: Number(formData.get("flockAgeDays")) || null,
       active: checkboxValue(formData, "active")
+    }
+  });
+  await recalculateAfterConfigurationChange();
+}
+
+export async function createFlock(formData: FormData) {
+  await prisma.flock.create({
+    data: {
+      farmHouseId: Number(formData.get("farmHouseId")),
+      flockCode: String(formData.get("flockCode") || "").trim(),
+      placementDate: dateFromInput(formData.get("placementDate")),
+      birdCount: Number(formData.get("birdCount")),
+      breed: nullableText(formData, "breed"),
+      targetMarketDays: Number(formData.get("targetMarketDays")) || null,
+      baseDailyTons: Number(formData.get("baseDailyTons")) || null,
+      active: checkboxValue(formData, "active"),
+      notes: nullableText(formData, "notes")
+    }
+  });
+  await recalculateAfterConfigurationChange();
+}
+
+export async function updateFlock(formData: FormData) {
+  await prisma.flock.update({
+    where: { id: Number(formData.get("flockId")) },
+    data: {
+      farmHouseId: Number(formData.get("farmHouseId")),
+      flockCode: String(formData.get("flockCode") || "").trim(),
+      placementDate: dateFromInput(formData.get("placementDate")),
+      birdCount: Number(formData.get("birdCount")),
+      breed: nullableText(formData, "breed"),
+      targetMarketDays: Number(formData.get("targetMarketDays")) || null,
+      baseDailyTons: Number(formData.get("baseDailyTons")) || null,
+      active: checkboxValue(formData, "active"),
+      notes: nullableText(formData, "notes")
     }
   });
   await recalculateAfterConfigurationChange();
