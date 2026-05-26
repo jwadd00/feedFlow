@@ -13,6 +13,8 @@ tsconfig.tsbuildinfo
 
 # Environment
 .env
+.env.local
+.env.*.local
 
 # Local database
 *.db
