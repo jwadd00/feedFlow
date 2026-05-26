@@ -57,6 +57,7 @@ model Flock {
   house             FarmHouse @relation(fields: [farmHouseId], references: [id])
 
   @@unique([farmHouseId, flockCode], name: "uq_house_flock")
+  @@index([farmHouseId, active], name: "idx_flocks_house_active")
   @@map("flocks")
 }
 
@@ -110,6 +111,7 @@ model BinReading {
   feedBin         FeedBin   @relation(fields: [feedBinId], references: [id])
   estimates       BinInventoryEstimate[] @relation("LastReading")
 
+  @@index([feedBinId, readingDatetime], name: "idx_bin_readings_feed_bin_datetime")
   @@map("bin_readings")
 }
 
@@ -130,6 +132,7 @@ model BinInventoryEstimate {
   feedBin                  FeedBin     @relation(fields: [feedBinId], references: [id])
   lastReading              BinReading? @relation("LastReading", fields: [lastReadingId], references: [id])
 
+  @@index([riskLevel], name: "idx_estimates_risk")
   @@map("bin_inventory_estimates")
 }
 
@@ -150,6 +153,7 @@ model LoadForecast {
   feedBin                     FeedBin   @relation(fields: [feedBinId], references: [id])
   loads                       Load[]
 
+  @@index([status], name: "idx_forecasts_status")
   @@map("load_forecasts")
 }
 
@@ -178,6 +182,7 @@ model Load {
   history                   LoadStatusHistory[]
   tickets                   DeliveryTicket[]
 
+  @@index([status], name: "idx_loads_status")
   @@map("loads")
 }
 
@@ -229,5 +234,6 @@ model DataQualityIssue {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@unique([ruleCode, entityType, entityId, issueStatus], name: "uq_open_issue")
+  @@index([issueStatus], name: "idx_issues_status")
   @@map("data_quality_issues")
 }
