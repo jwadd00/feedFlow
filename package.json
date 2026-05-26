@@ -9,7 +9,8 @@
     "render:start": "node scripts/render-start.cjs",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
-    "prisma:push": "node scripts/create-db.cjs",
+    "prisma:push": "prisma db push",
+    "db:init": "node scripts/create-db.cjs",
     "seed:demo-farms": "node scripts/seed-demo-farms.cjs",
     "check": "next build"
   },

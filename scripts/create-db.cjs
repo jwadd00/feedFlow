@@ -1,14 +1,13 @@
-const path = require("path");
-const fs = require("fs");
 const { execFileSync } = require("child_process");
-const { defaultSqliteDatabaseUrl, sqlitePathFromUrl } = require("./sqlite-url.cjs");
+const path = require("path");
 
 const root = path.resolve(__dirname, "..");
-const envUrl = defaultSqliteDatabaseUrl(root);
-const dbPath = sqlitePathFromUrl(envUrl, root);
-const env = { ...process.env, SQLITE_DATABASE_URL: envUrl };
+const env = { ...process.env };
 
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+if (!env.DATABASE_URL) {
+  console.error("DATABASE_URL is required for Prisma database initialization.");
+  process.exit(1);
+}
 
 execFileSync("npx", ["prisma", "db", "push", "--skip-generate"], {
   cwd: root,
@@ -26,4 +25,4 @@ if (process.env.SKIP_PRISMA_GENERATE !== "true") {
   });
 }
 
-console.log(`FeedFlow database ready at ${dbPath}`);
+console.log("FeedFlow database schema is ready.");

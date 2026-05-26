@@ -1,6 +1,5 @@
 const { spawnSync, spawn } = require("child_process");
 const path = require("path");
-const { defaultSqliteDatabaseUrl } = require("./sqlite-url.cjs");
 
 const root = path.resolve(__dirname, "..");
 const port = process.env.PORT || "10000";
@@ -8,7 +7,6 @@ const env = {
   ...process.env,
   HOSTNAME: "0.0.0.0",
   PORT: port,
-  SQLITE_DATABASE_URL: defaultSqliteDatabaseUrl(root),
   SKIP_PRISMA_GENERATE: "true"
 };
 
