@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("SQLITE_DATABASE_URL")
+}
+
+model Farm {
+  id         Int         @id @default(autoincrement())
+  farmCode   String      @unique @map("farm_code")
+  farmName   String      @map("farm_name")
+  growerName String?     @map("grower_name")
+  region     String?
+  route      String?
+  address    String?
+  active     Boolean     @default(true)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  houses     FarmHouse[]
+  loads      Load[]
+
+  @@map("farms")
+}
+
+model FarmHouse {
+  id           Int       @id @default(autoincrement())
+  farmId       Int       @map("farm_id")
+  houseCode    String    @map("house_code")
+  birdCount    Int?      @map("bird_count")
+  flockAgeDays Int?      @map("flock_age_days")
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  farm         Farm      @relation(fields: [farmId], references: [id])
+  bins         FeedBin[]
+  flocks       Flock[]
+
+  @@unique([farmId, houseCode], name: "uq_farm_house")
+  @@map("farm_houses")
+}
+
+model Flock {
+  id                Int       @id @default(autoincrement())
+  farmHouseId       Int       @map("farm_house_id")
+  flockCode         String    @map("flock_code")
+  placementDate     DateTime  @map("placement_date")
+  birdCount         Int       @map("bird_count")
+  breed             String?
+  targetMarketDays  Int?      @map("target_market_days")
+  baseDailyTons     Float?    @map("base_daily_tons")
+  active            Boolean   @default(true)
+  notes             String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  house             FarmHouse @relation(fields: [farmHouseId], references: [id])
+
+  @@unique([farmHouseId, flockCode], name: "uq_house_flock")
+  @@map("flocks")
+}
+
+model FeedType {
+  id        Int       @id @default(autoincrement())
+  feedCode  String    @unique @map("feed_code")
+  feedName  String    @map("feed_name")
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  bins      FeedBin[]
+  loads     Load[]
+  tickets   DeliveryTicket[]
+
+  @@map("feed_types")
+}
+
+model FeedBin {
+  id                            Int                     @id @default(autoincrement())
+  farmHouseId                   Int                     @map("farm_house_id")
+  feedTypeId                    Int                     @map("feed_type_id")
+  binCode                       String                  @map("bin_code")
+  capacityTons                  Float                   @map("capacity_tons")
+  estimatedDailyConsumptionTons Float                   @map("estimated_daily_consumption_tons")
+  minimumSafeTons               Float                   @default(2.0) @map("minimum_safe_tons")
+  active                        Boolean                 @default(true)
+  createdAt                     DateTime                @default(now()) @map("created_at")
+  updatedAt                     DateTime                @updatedAt @map("updated_at")
+  house                         FarmHouse               @relation(fields: [farmHouseId], references: [id])
+  feedType                      FeedType                @relation(fields: [feedTypeId], references: [id])
+  readings                      BinReading[]
+  estimate                      BinInventoryEstimate?
+  forecasts                     LoadForecast[]
+  loads                         Load[]
+
+  @@unique([farmHouseId, binCode], name: "uq_house_bin")
+  @@map("feed_bins")
+}
+
+model BinReading {
+  id              Int       @id @default(autoincrement())
+  feedBinId       Int       @map("feed_bin_id")
+  readingDatetime DateTime  @map("reading_datetime")
+  source          String
+  readingTons     Float     @map("reading_tons")
+  readingPercent  Float?    @map("reading_percent")
+  notes           String?
+  createdBy       String?   @map("created_by")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  feedBin         FeedBin   @relation(fields: [feedBinId], references: [id])
+  estimates       BinInventoryEstimate[] @relation("LastReading")
+
+  @@map("bin_readings")
+}
+
+model BinInventoryEstimate {
+  id                       Int         @id @default(autoincrement())
+  feedBinId                Int         @unique @map("feed_bin_id")
+  lastReadingId            Int?        @map("last_reading_id")
+  estimatedAt              DateTime    @map("estimated_at")
+  currentEstimatedTons     Float       @map("current_estimated_tons")
+  percentFull              Float       @map("percent_full")
+  dailyConsumptionTons     Float       @map("daily_consumption_tons")
+  projectedEmptyDatetime   DateTime?   @map("projected_empty_datetime")
+  daysRemaining            Float?      @map("days_remaining")
+  riskLevel                String      @map("risk_level")
+  confidenceScore          Float       @map("confidence_score")
+  createdAt                DateTime    @default(now()) @map("created_at")
+  updatedAt                DateTime    @updatedAt @map("updated_at")
+  feedBin                  FeedBin     @relation(fields: [feedBinId], references: [id])
+  lastReading              BinReading? @relation("LastReading", fields: [lastReadingId], references: [id])
+
+  @@map("bin_inventory_estimates")
+}
+
+model LoadForecast {
+  id                          Int       @id @default(autoincrement())
+  feedBinId                   Int       @map("feed_bin_id")
+  generatedAt                 DateTime  @map("generated_at")
+  currentEstimatedTons        Float     @map("current_estimated_tons")
+  daysRemaining               Float?    @map("days_remaining")
+  recommendedDeliveryDatetime DateTime? @map("recommended_delivery_datetime")
+  recommendedTons             Float     @map("recommended_tons")
+  priority                    String
+  confidenceScore             Float     @map("confidence_score")
+  reason                      String
+  status                      String    @default("Open")
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
+  feedBin                     FeedBin   @relation(fields: [feedBinId], references: [id])
+  loads                       Load[]
+
+  @@map("load_forecasts")
+}
+
+model Load {
+  id                        Int                 @id @default(autoincrement())
+  loadNumber                String              @unique @map("load_number")
+  farmId                    Int                 @map("farm_id")
+  feedBinId                 Int                 @map("feed_bin_id")
+  feedTypeId                Int                 @map("feed_type_id")
+  createdFromForecastId     Int?                @map("created_from_forecast_id")
+  plannedTons               Float               @map("planned_tons")
+  scheduledDeliveryDatetime DateTime?           @map("scheduled_delivery_datetime")
+  priority                  String
+  status                    String              @default("Planned")
+  truck                     String?
+  driver                    String?
+  route                     String?
+  notes                     String?
+  createdBy                 String?             @map("created_by")
+  createdAt                 DateTime            @default(now()) @map("created_at")
+  updatedAt                 DateTime            @updatedAt @map("updated_at")
+  farm                      Farm                @relation(fields: [farmId], references: [id])
+  feedBin                   FeedBin             @relation(fields: [feedBinId], references: [id])
+  feedType                  FeedType            @relation(fields: [feedTypeId], references: [id])
+  createdFromForecast       LoadForecast?       @relation(fields: [createdFromForecastId], references: [id])
+  history                   LoadStatusHistory[]
+  tickets                   DeliveryTicket[]
+
+  @@map("loads")
+}
+
+model LoadStatusHistory {
+  id        Int      @id @default(autoincrement())
+  loadId    Int      @map("load_id")
+  oldStatus String?  @map("old_status")
+  newStatus String   @map("new_status")
+  changedAt DateTime @map("changed_at")
+  changedBy String?  @map("changed_by")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  load      Load     @relation(fields: [loadId], references: [id])
+
+  @@map("load_status_history")
+}
+
+model DeliveryTicket {
+  id                  Int       @id @default(autoincrement())
+  loadId              Int       @map("load_id")
+  ticketNumber        String    @unique @map("ticket_number")
+  deliveredAt         DateTime  @map("delivered_at")
+  actualTons          Float     @map("actual_tons")
+  feedTypeId          Int       @map("feed_type_id")
+  reconciled          Boolean   @default(false)
+  reconciliationNotes String?   @map("reconciliation_notes")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  load                Load      @relation(fields: [loadId], references: [id])
+  feedType            FeedType  @relation(fields: [feedTypeId], references: [id])
+
+  @@map("delivery_tickets")
+}
+
+model DataQualityIssue {
+  id              Int       @id @default(autoincrement())
+  ruleCode        String    @map("rule_code")
+  entityType      String    @map("entity_type")
+  entityId        Int       @map("entity_id")
+  severity        String
+  issueStatus     String    @default("Open") @map("issue_status")
+  detectedAt      DateTime  @map("detected_at")
+  assignedTo      String?   @map("assigned_to")
+  issueSummary    String    @map("issue_summary")
+  resolutionNotes String?   @map("resolution_notes")
+  resolvedAt      DateTime? @map("resolved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([ruleCode, entityType, entityId, issueStatus], name: "uq_open_issue")
+  @@map("data_quality_issues")
+}

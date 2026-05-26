@@ -1,5 +1,38 @@
 # FeedFlow Operations Hub MVP
 
+## Node / TypeScript App
+
+FeedFlow has been converted into a Next.js + TypeScript + Prisma app in the same general style as the Concord app. The prior Streamlit/Python app is still present for reference.
+
+```powershell
+npm install
+npm run prisma:push
+npx next dev -p 3000
+```
+
+Open http://localhost:3000.
+
+The TypeScript app uses a local SQLite database at `data/feedflow.db`. If `SQLITE_DATABASE_URL` is omitted, the app points there automatically. On first load it seeds demo farms, bins, readings, loads, tickets, forecasts, and data quality issues unless `SEED_SAMPLE_DATA=false`.
+
+Workflow route order: `/workflow`, `/admin`, `/bins`, `/forecasts`, `/loads`, `/quality`, and `/operations`.
+
+## Render Deployment
+
+This repo includes a `render.yaml` blueprint for a durable SQLite MVP deployment on Render.
+
+- Build command: `npm install && npx prisma generate && npm run build`
+- Start command: `npm run render:start`
+- Health check: `/api/health`
+- Persistent disk mount: `/opt/render/project/src/storage`
+- SQLite database URL: `file:/opt/render/project/src/storage/feedflow.db`
+- Basic Auth: set `APP_BASIC_AUTH_USERNAME` and `APP_BASIC_AUTH_PASSWORD`
+
+The runtime start script creates missing SQLite tables on the persistent disk before starting Next. Pages are server-rendered on demand so Render builds do not need access to the runtime disk or database.
+
+The app requires Basic Auth in production. The included `render.yaml` generates `APP_BASIC_AUTH_PASSWORD` and `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` automatically. Keep both values stable across deploys.
+
+For real production scale, migrate Prisma from SQLite to Render PostgreSQL and replace `SQLITE_DATABASE_URL` with the managed database URL.
+
 A runnable Streamlit MVP for a poultry feed / animal food manufacturing facility focused on:
 
 - Farm bin inventory surveillance

@@ -5,6 +5,12 @@ __pycache__/
 .venv/
 venv/
 
+# Node / Next
+node_modules/
+.next/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
 # Environment
 .env
 
@@ -20,3 +26,6 @@ data/feedflow.db
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log

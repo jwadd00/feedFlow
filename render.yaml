@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: feedflow
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm run render:start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.13.0
+      - key: SEED_SAMPLE_DATA
+        value: "false"
+      - key: RUN_STARTUP_JOBS
+        value: "false"
+      - key: SQLITE_DATABASE_URL
+        value: file:/opt/render/project/src/storage/feedflow.db
+      - key: APP_BASIC_AUTH_REQUIRED
+        value: "true"
+      - key: APP_BASIC_AUTH_USERNAME
+        value: admin
+      - key: APP_BASIC_AUTH_PASSWORD
+        generateValue: true
+      - key: NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+        generateValue: true
+    disk:
+      name: feedflow-data
+      mountPath: /opt/render/project/src/storage
+      sizeGB: 1
