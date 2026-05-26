@@ -1,7 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
-const { defaultSqliteDatabaseUrl } = require("./sqlite-url.cjs");
 
-process.env.SQLITE_DATABASE_URL ||= defaultSqliteDatabaseUrl();
 const prisma = new PrismaClient();
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date();

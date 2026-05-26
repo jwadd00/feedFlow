@@ -1,7 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import { defaultSqliteDatabaseUrl } from "@/lib/storage";
-
-process.env.SQLITE_DATABASE_URL ||= defaultSqliteDatabaseUrl();
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
