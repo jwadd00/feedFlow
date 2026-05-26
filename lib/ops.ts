@@ -331,17 +331,42 @@ async function upsertOpenIssue(ruleCode: string, entityType: string, entityId: n
   });
 }
 
+async function clearManagedOpenIssues(now: Date) {
+  const openIssues = await prisma.dataQualityIssue.findMany({
+    where: { issueStatus: "Open", ruleCode: { in: MANAGED_QUALITY_RULES } }
+  });
+
+  for (const issue of openIssues) {
+    const existingResolved = await prisma.dataQualityIssue.findFirst({
+      where: {
+        ruleCode: issue.ruleCode,
+        entityType: issue.entityType,
+        entityId: issue.entityId,
+        issueStatus: "Resolved"
+      },
+      select: { id: true }
+    });
+
+    if (existingResolved) {
+      await prisma.dataQualityIssue.delete({ where: { id: issue.id } });
+      continue;
+    }
+
+    await prisma.dataQualityIssue.update({
+      where: { id: issue.id },
+      data: {
+        issueStatus: "Resolved",
+        resolvedAt: now,
+        resolutionNotes: "Auto-resolved before rerunning managed data quality checks."
+      }
+    });
+  }
+}
+
 export async function runDataQualityChecks() {
   await refreshInventoryEstimates();
   const now = new Date();
-  await prisma.dataQualityIssue.updateMany({
-    where: { issueStatus: "Open", ruleCode: { in: MANAGED_QUALITY_RULES } },
-    data: {
-      issueStatus: "Resolved",
-      resolvedAt: now,
-      resolutionNotes: "Auto-resolved before rerunning managed data quality checks."
-    }
-  });
+  await clearManagedOpenIssues(now);
   const bins = await prisma.feedBin.findMany({ where: { active: true } });
   for (const bin of bins) {
     const latest = await prisma.binReading.findFirst({ where: { feedBinId: bin.id }, orderBy: [{ readingDatetime: "desc" }, { id: "desc" }] });
