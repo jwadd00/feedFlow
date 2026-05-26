@@ -10,6 +10,7 @@
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:push": "node scripts/create-db.cjs",
+    "seed:demo-farms": "node scripts/seed-demo-farms.cjs",
     "check": "next build"
   },
   "dependencies": {
