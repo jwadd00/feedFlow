@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  background: #f6f8f6;
+  color: #18212f;
+}
+
+body {
+  margin: 0;
+  background: #f6f8f6;
+  color: #18212f;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #d9e1e8;
+  border-radius: 6px;
+  background: white;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.875rem;
+}
+
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #18212f;
+  background: #18212f;
+  color: white;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.button-secondary {
+  border-color: #d9e1e8;
+  background: white;
+  color: #18212f;
+}
+
+.panel {
+  border: 1px solid #d9e1e8;
+  background: white;
+  border-radius: 8px;
+}
+
+.metric {
+  border-left: 4px solid #2f6f4f;
+  background: white;
+}
