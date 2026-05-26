@@ -10,7 +10,7 @@ import {
   updateFeedTypeAction,
   updateFlockAction
 } from "@/app/actions";
-import { DataTable, PageHeader, Pill, Stat, Tons } from "@/components/ui";
+import { DataTable, PageHeader, Pill, Tons } from "@/components/ui";
 import { ensureDatabaseReady } from "@/lib/bootstrap";
 import { prisma } from "@/lib/db";
 import { fmtNumber } from "@/lib/format";
@@ -35,7 +35,7 @@ function flockAgeDays(placementDate: Date) {
 
 export default async function AdminPage() {
   await ensureDatabaseReady();
-  const [farms, houses, flocks, feedTypes, bins, openIssues, openForecasts] = await Promise.all([
+  const [farms, houses, flocks, feedTypes, bins] = await Promise.all([
     prisma.farm.findMany({ include: { houses: true }, orderBy: { farmCode: "asc" } }),
     prisma.farmHouse.findMany({ include: { farm: true, bins: true, flocks: true }, orderBy: [{ farmId: "asc" }, { houseCode: "asc" }] }),
     prisma.flock.findMany({ include: { house: { include: { farm: true } } }, orderBy: [{ active: "desc" }, { placementDate: "desc" }] }),
@@ -43,9 +43,7 @@ export default async function AdminPage() {
     prisma.feedBin.findMany({
       include: { feedType: true, estimate: true, house: { include: { farm: true } } },
       orderBy: [{ farmHouseId: "asc" }, { binCode: "asc" }]
-    }),
-    prisma.dataQualityIssue.count({ where: { issueStatus: "Open" } }),
-    prisma.loadForecast.count({ where: { status: "Open" } })
+    })
   ]);
 
   return (
@@ -55,13 +53,6 @@ export default async function AdminPage() {
         title="Admin"
         description="Add and edit farms, houses, flocks, feed types, and bins. Flock placement date, bird count, bin capacity, daily consumption, safe minimum, and active status recalculate inventory, forecasts, and quality checks."
       />
-      <section className="grid gap-4 md:grid-cols-5">
-        <Stat label="Farms" value={farms.length} />
-        <Stat label="Active Flocks" value={flocks.filter((flock) => flock.active).length} />
-        <Stat label="Bins" value={bins.length} />
-        <Stat label="Open Forecasts" value={openForecasts} tone="#d99a28" />
-        <Stat label="Open Issues" value={openIssues} tone="#b42318" />
-      </section>
 
       <section className="mt-6 grid gap-5 lg:grid-cols-2">
         <form action={createFarmAction} className="panel space-y-3 p-5">

@@ -25,6 +25,10 @@ function unauthorized(message = "Authentication required") {
   });
 }
 
+function hasValidCredential(user: string, password: string, expectedUser: string, expectedPassword?: string) {
+  return Boolean(expectedPassword) && timingSafeEqual(user, expectedUser) && timingSafeEqual(password, expectedPassword || "");
+}
+
 export function middleware(request: NextRequest) {
   if (isPublicPath(request.nextUrl.pathname)) {
     return NextResponse.next();
@@ -37,6 +41,9 @@ export function middleware(request: NextRequest) {
 
   const expectedUser = process.env.APP_BASIC_AUTH_USERNAME || "admin";
   const expectedPassword = process.env.APP_BASIC_AUTH_PASSWORD;
+  const testAuthEnabled = process.env.APP_TEST_AUTH_ENABLED === "true";
+  const expectedTestUser = process.env.APP_TEST_AUTH_USERNAME || "tester";
+  const expectedTestPassword = process.env.APP_TEST_AUTH_PASSWORD;
 
   if (!expectedPassword) {
     if (process.env.NODE_ENV !== "production") {
@@ -66,7 +73,10 @@ export function middleware(request: NextRequest) {
     return unauthorized();
   }
 
-  if (!timingSafeEqual(user, expectedUser) || !timingSafeEqual(password, expectedPassword)) {
+  const adminCredentialValid = hasValidCredential(user, password, expectedUser, expectedPassword);
+  const testCredentialValid = testAuthEnabled && hasValidCredential(user, password, expectedTestUser, expectedTestPassword);
+
+  if (!adminCredentialValid && !testCredentialValid) {
     return unauthorized();
   }
 

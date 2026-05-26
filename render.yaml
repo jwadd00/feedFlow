@@ -23,6 +23,12 @@ services:
         value: admin
       - key: APP_BASIC_AUTH_PASSWORD
         generateValue: true
+      - key: APP_TEST_AUTH_ENABLED
+        value: "false"
+      - key: APP_TEST_AUTH_USERNAME
+        value: tester
+      - key: APP_TEST_AUTH_PASSWORD
+        generateValue: true
       - key: NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
         generateValue: true
 
